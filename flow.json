@@ -6,7 +6,13 @@
 		}
 	},
 	"contracts": {
-		"Profile":  "./cadence/contracts/Profile.cdc"
+		"Profile":  {
+			"source": "./cadence/contracts/Profile.cdc",
+			"aliases": {
+				"emulator": "f8d6e0586b0a20c7",
+				"testnet": "ba1132bc08f82fe2"
+			}
+		}
 	},
 	"networks": {
 		"emulator": "127.0.0.1:3569",
