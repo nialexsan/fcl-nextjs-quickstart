@@ -7,6 +7,9 @@ import {
   useState,
 } from "react";
 import { useTransaction } from "./TransactionContext";
+import ReadProfileScript from "../cadence/scripts/read-profile.cdc"
+import CreateProfileTransaction from "../cadence/transactions/create-profile.cdc"
+import UpdateProfileTransaction from "../cadence/transactions/update-profile.cdc"
 
 export const AuthContext = createContext({});
 
@@ -23,13 +26,7 @@ export default function AuthProvider({ children }) {
 
   const loadProfile = useCallback(async () => {
     const profile = await fcl.query({
-      cadence: `
-        import Profile from 0xProfile
-
-        pub fun main(address: Address): Profile.ReadOnly? {
-          return Profile.read(address)
-        }
-      `,
+      cadence: ReadProfileScript,
       args: (arg, t) => [arg(currentUser.addr, t.Address)],
     });
     setProfile(profile ?? null);
@@ -63,22 +60,7 @@ export default function AuthProvider({ children }) {
     initTransactionState();
 
     const transactionId = await fcl.mutate({
-      cadence: `
-        import Profile from 0xProfile
-
-        transaction {
-          prepare(account: AuthAccount) {
-            // Only initialize the account if it hasn't already been initialized
-            if (!Profile.check(account.address)) {
-              // This creates and stores the profile in the user's account
-              account.save(<- Profile.new(), to: Profile.privatePath)
-
-              // This creates the public capability that lets applications read the profile's info
-              account.link<&Profile.Base{Profile.Public}>(Profile.publicPath, target: Profile.privatePath)
-            }
-          }
-        }
-      `,
+      cadence: CreateProfileTransaction,
       payer: fcl.authz,
       proposer: fcl.authz,
       authorizations: [fcl.authz],
@@ -98,25 +80,7 @@ export default function AuthProvider({ children }) {
     initTransactionState();
 
     const transactionId = await fcl.mutate({
-      cadence: `
-        import Profile from 0xProfile
-
-        transaction(name: String, color: String, info: String) {
-          prepare(account: AuthAccount) {
-            account
-              .borrow<&Profile.Base{Profile.Owner}>(from: Profile.privatePath)!
-              .setName(name)
-
-            account
-              .borrow<&Profile.Base{Profile.Owner}>(from: Profile.privatePath)!
-              .setInfo(info)
-
-            account
-              .borrow<&Profile.Base{Profile.Owner}>(from: Profile.privatePath)!
-              .setColor(color)
-          }
-        }
-      `,
+      cadence: UpdateProfileTransaction,
       args: (arg, t) => [
         arg(name, t.String),
         arg(color, t.String),

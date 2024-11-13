@@ -69,11 +69,11 @@ This will lead to predictability in how applications can look up the data.
 
     transaction {
       let address: address
-      prepare(currentUser: AuthAccount) {
+      prepare(currentUser: auth(SaveValue, PublishCapability, IssueStorageCapabilityController) &Account) {
         self.address = currentUser.address
         if !Profile.check(self.address) {
-          currentUser.save(<- Profile.new(), to: Profile.privatePath)
-          currentUser.link<&Profile.Base{Profile.Public}>(Profile.publicPath, target: Profile.privatePath)
+          let profileCapability = currentUser.capabilities.storage.issue<&{Profile.Public}>(Profile.privatePath)
+          currentUser.capabilities.publish(profileCapability, at: Profile.publicPath)
         }
       }
       post {
@@ -92,11 +92,12 @@ This will lead to predictability in how applications can look up the data.
         import Profile from 0xba1132bc08f82fe2
 
         transaction {
-          prepare(currentUser: AuthAccount) {
+          prepare(currentUser: auth(SaveValue, PublishCapability, IssueStorageCapabilityController) &Account) {
             self.address = currentUser.address
             if !Profile.check(self.address) {
               currentUser.save(<- Profile.new(), to: Profile.privatePath)
-              currentUser.link<&Profile.Base{Profile.Public}>(Profile.publicPath, target: Profile.privatePath)
+              let profileCapability = currentUser.capabilities.storage.issue<&{Profile.Public}>(Profile.privatePath)
+              currentUser.capabilities.publish(profileCapability, at: Profile.publicPath)
             }
           }
           post {
@@ -124,8 +125,9 @@ As the owner of a resource you can update the following:
     import Profile from 0xba1132bc08f82fe2
 
     transaction(name: String) {
-      prepare(currentUser: AuthAccount) {
+      prepare(currentUser: auth(BorrowValue) &Account) {
         currentUser
+          .storage
           .borrow<&{Profile.Owner}>(from: Profile.privatePath)!
           .setName(name)
       }
@@ -142,8 +144,9 @@ As the owner of a resource you can update the following:
         import Profile from 0xba1132bc08f82fe2
 
         transaction(name: String) {
-          prepare(currentUser: AuthAccount) {
+          prepare(currentUser: auth(BorrowValue) &Account) {
             currentUser
+              .storage
               .borrow<&{Profile.Owner}>(from: Profile.privatePath)!
               .setName(name)
           }
@@ -165,7 +168,7 @@ As the owner of a resource you can update the following:
 
     import Profile from 0xba1132bc08f82fe2
 
-    pub fun main(address: Address): Profile.ReadOnly? {
+    access(all) fun main(address: Address): Profile.ReadOnly? {
       return Profile.read(address)
     }
 
@@ -179,7 +182,7 @@ As the owner of a resource you can update the following:
       cadence: `
         import Profile from 0xba1132bc08f82fe2
 
-        pub fun main(address: Address): Profile.ReadOnly? {
+        access(all) fun main(address: Address): Profile.ReadOnly? {
           return Profile.read(address)
         }
       `,
@@ -198,7 +201,7 @@ As the owner of a resource you can update the following:
 
     import Profile from 0xba1132bc08f82fe2
 
-    pub fun main(addresses: [Address]): {Address: Profile.ReadOnly} {
+    access(all) fun main(addresses: [Address]): {Address: Profile.ReadOnly} {
       return Profile.readMultiple(addresses)
     }
 
@@ -212,7 +215,7 @@ As the owner of a resource you can update the following:
       cadence: `
         import Profile from 0xba1132bc08f82fe2
 
-        pub fun main(addresses: [Address]): {Address: Profile.ReadOnly} {
+        access(all) fun main(addresses: [Address]): {Address: Profile.ReadOnly} {
           return Profile.readMultiple(addresses)
         }
       `,
@@ -231,7 +234,7 @@ As the owner of a resource you can update the following:
 
     import Profile from 0xba1132bc08f82fe2
 
-    pub fun main(address: Address): Bool {
+    access(all) fun main(address: Address): Bool {
       return Profile.check(address)
     }
 
@@ -245,7 +248,7 @@ As the owner of a resource you can update the following:
       cadence: `
         import Profile from 0xba1132bc08f82fe2
 
-        pub fun main(address: Address): Bool {
+        access(all) fun main(address: Address): Bool {
           return Profile.check(address)
         }
       `,
@@ -255,39 +258,39 @@ As the owner of a resource you can update the following:
     })
 
 */
-pub contract Profile {
-  pub let publicPath: PublicPath
-  pub let privatePath: StoragePath
+access(all) contract Profile {
+  access(all) let publicPath: PublicPath
+  access(all) let privatePath: StoragePath
 
-  pub resource interface Public {
-    pub fun getName(): String
-    pub fun getAvatar(): String
-    pub fun getColor(): String
-    pub fun getInfo(): String
-    pub fun asReadOnly(): Profile.ReadOnly
+  access(all) resource interface Public {
+    access(all) fun getName(): String
+    access(all) fun getAvatar(): String
+    access(all) fun getColor(): String
+    access(all) fun getInfo(): String
+    access(all) fun asReadOnly(): Profile.ReadOnly
   }
 
-  pub resource interface Owner {
-    pub fun getName(): String
-    pub fun getAvatar(): String
-    pub fun getColor(): String
-    pub fun getInfo(): String
+  access(all) resource interface Owner {
+    access(all) fun getName(): String
+    access(all) fun getAvatar(): String
+    access(all) fun getColor(): String
+    access(all) fun getInfo(): String
 
-    pub fun setName(_ name: String) {
+    access(all) fun setName(_ name: String) {
       pre {
         name.length <= 15: "Names must be under 15 characters long."
       }
     }
-    pub fun setAvatar(_ src: String)
-    pub fun setColor(_ color: String)
-    pub fun setInfo(_ info: String) {
+    access(all) fun setAvatar(_ src: String)
+    access(all) fun setColor(_ color: String)
+    access(all) fun setInfo(_ info: String) {
       pre {
         info.length <= 280: "Profile Info can at max be 280 characters long."
       }
     }
   }
 
-  pub resource Base: Owner, Public {
+  access(all) resource Base: Owner, Public {
     access(self) var name: String
     access(self) var avatar: String
     access(self) var color: String
@@ -300,17 +303,17 @@ pub contract Profile {
       self.info = ""
     }
 
-    pub fun getName(): String { return self.name }
-    pub fun getAvatar(): String { return self.avatar }
-    pub fun getColor(): String {return self.color }
-    pub fun getInfo(): String { return self.info }
+    access(all) fun getName(): String { return self.name }
+    access(all) fun getAvatar(): String { return self.avatar }
+    access(all) fun getColor(): String {return self.color }
+    access(all) fun getInfo(): String { return self.info }
 
-    pub fun setName(_ name: String) { self.name = name }
-    pub fun setAvatar(_ src: String) { self.avatar = src }
-    pub fun setColor(_ color: String) { self.color = color }
-    pub fun setInfo(_ info: String) { self.info = info }
+    access(all) fun setName(_ name: String) { self.name = name }
+    access(all) fun setAvatar(_ src: String) { self.avatar = src }
+    access(all) fun setColor(_ color: String) { self.color = color }
+    access(all) fun setInfo(_ info: String) { self.info = info }
 
-    pub fun asReadOnly(): Profile.ReadOnly {
+    access(all) fun asReadOnly(): Profile.ReadOnly {
       return Profile.ReadOnly(
         address: self.owner?.address,
         name: self.getName(),
@@ -321,12 +324,12 @@ pub contract Profile {
     }
   }
 
-  pub struct ReadOnly {
-    pub let address: Address?
-    pub let name: String
-    pub let avatar: String
-    pub let color: String
-    pub let info: String
+  access(all) struct ReadOnly {
+    access(all) let address: Address?
+    access(all) let name: String
+    access(all) let avatar: String
+    access(all) let color: String
+    access(all) let info: String
 
     init(address: Address?, name: String, avatar: String, color: String, info: String) {
       self.address = address
@@ -337,31 +340,33 @@ pub contract Profile {
     }
   }
 
-  pub fun new(): @Profile.Base {
+  access(all) fun new(): @Profile.Base {
     return <- create Base()
   }
 
-  pub fun check(_ address: Address): Bool {
+  access(all) fun check(_ address: Address): Bool {
     return getAccount(address)
-      .getCapability<&{Profile.Public}>(Profile.publicPath)
+      .capabilities
+      .get<&{Profile.Public}>(Profile.publicPath)
       .check()
   }
 
-  pub fun fetch(_ address: Address): &{Profile.Public} {
+  access(all) fun fetch(_ address: Address): &{Profile.Public} {
     return getAccount(address)
-      .getCapability<&{Profile.Public}>(Profile.publicPath)
+      .capabilities
+      .get<&{Profile.Public}>(Profile.publicPath)
       .borrow()!
   }
 
-  pub fun read(_ address: Address): Profile.ReadOnly? {
-    if let profile = getAccount(address).getCapability<&{Profile.Public}>(Profile.publicPath).borrow() {
+  access(all) fun read(_ address: Address): Profile.ReadOnly? {
+    if let profile = getAccount(address).capabilities.get<&{Profile.Public}>(Profile.publicPath).borrow() {
       return profile.asReadOnly()
     } else {
       return nil
     }
   }
 
-  pub fun readMultiple(_ addresses: [Address]): {Address: Profile.ReadOnly} {
+  access(all) fun readMultiple(_ addresses: [Address]): {Address: Profile.ReadOnly} {
     let profiles: {Address: Profile.ReadOnly} = {}
     for address in addresses {
       let profile = Profile.read(address)
@@ -377,11 +382,13 @@ pub contract Profile {
     self.publicPath = /public/profile
     self.privatePath = /storage/profile
 
-    self.account.save(<- self.new(), to: self.privatePath)
-    self.account.link<&Base{Public}>(self.publicPath, target: self.privatePath)
+    self.account.storage.save(<- self.new(), to: self.privatePath)
+    let profileCapability = self.account.capabilities.storage.issue<&{Public}>(self.privatePath)
+    self.account.capabilities.publish(profileCapability, at: self.publicPath)
 
     self.account
-      .borrow<&Base{Owner}>(from: self.privatePath)!
+      .storage
+      .borrow<&{Owner}>(from: self.privatePath)!
       .setName("qvvg")
   }
 }
